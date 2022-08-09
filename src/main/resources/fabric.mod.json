@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "cinematictool",
+  "version": "${version}",
+
+  "name": "Cinematic Tool",
+  "description": "This is an example description! Tell everyone what your mod is about!",
+  "authors": [
+    "Maed_12"
+  ],
+  "contact": {
+    "homepage": "https://fabricmc.net/",
+    "sources": "https://github.com/FabricMC/fabric-example-mod"
+  },
+
+  "license": "MIT License",
+  "icon": "assets/modid/icon.png",
+
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.maed.cinematictool.CinematicTool"
+    ]
+  },
+  "mixins": [
+    "cinematictool.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=0.14.6",
+    "fabric": "*",
+    "minecraft": "~1.19",
+    "java": ">=17"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}
