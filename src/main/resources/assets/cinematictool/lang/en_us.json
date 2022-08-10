@@ -1,3 +1,10 @@
 {
-  "commands.cinematic.rec.failed.cinematicalreadyexits": "Cinematic already exists"
+  "commands.cinematic.rec.failed.cinematicalreadyexits": "Cinematic already exists",
+  "commands.cinematic.rec.failed.playernull": "This command is only for players",
+  "commands.cinematic.rec.failed.cinematicnotexist": "Cinematic doesn't exist",
+  "commands.cinematic.rec.failed.playerrecording": "You are already recording a cinematic",
+  "commands.cinematic.rec.infostop": "Press %1$s to stop recording",
+
+  "key.category.cinematictool": "Cinematic Tool",
+  "key.cinematictool.stop": "Stop recording"
 }

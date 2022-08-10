@@ -20,6 +20,9 @@
   "entrypoints": {
     "main": [
       "net.maed.cinematictool.CinematicTool"
+    ],
+    "client": [
+      "net.maed.cinematictool.CinematicToolClient"
     ]
   },
   "mixins": [
