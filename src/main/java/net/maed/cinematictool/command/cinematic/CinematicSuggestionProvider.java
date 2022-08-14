@@ -18,6 +18,4 @@ public class CinematicSuggestionProvider implements SuggestionProvider<ServerCom
         });
         return builder.buildFuture();
     }
-
-
 }
