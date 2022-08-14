@@ -4,13 +4,13 @@
   "version": "${version}",
 
   "name": "Cinematic Tool",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "description": "Record and play custom cinematic",
   "authors": [
     "Maed_12"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://twitter.com/maedkill12",
+    "sources": "https://github.com/Maedkill12/cinematic-tool-mod-1.19"
   },
 
   "license": "MIT License",

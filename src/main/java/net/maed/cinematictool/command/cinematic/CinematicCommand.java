@@ -2,17 +2,19 @@ package net.maed.cinematictool.command.cinematic;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.maed.cinematictool.cinematic.Cinematic;
-import net.maed.cinematictool.command.CinematicArgumentType;
-import net.maed.cinematictool.event.KeyInputHandler;
+import net.maed.cinematictool.networking.Packet;
+import net.maed.cinematictool.util.CinematicUtil;
 import net.maed.cinematictool.util.Location;
+import net.maed.cinematictool.util.PlayerUtil;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 
 import java.util.Collection;
@@ -28,12 +30,12 @@ public class CinematicCommand {
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess commandRegistryAccess, CommandManager.RegistrationEnvironment registrationEnvironment) {
         dispatcher.register(CommandManager.literal("cinematic")
                 .requires(source -> source.hasPermissionLevel(2))
-                .then(CommandManager.literal("rec")
+                .then(CommandManager.literal("record")
                         .then(CommandManager.argument("name", StringArgumentType.word())
                                 .executes(context -> CinematicCommand.rec(context.getSource(), StringArgumentType.getString(context, "name")))))
                 .then(CommandManager.literal("play")
-                        .then(CommandManager.argument("targets", EntityArgumentType.players())
-                                .then(CommandManager.argument("name", CinematicArgumentType.cinematic())
+                        .then(CommandManager.argument("targets", EntityArgumentType.entities())
+                                .then(CommandManager.argument("name", StringArgumentType.word()).suggests(new CinematicSuggestionProvider())
                                         .executes(context -> CinematicCommand.play(context.getSource(), EntityArgumentType.getPlayers(context, "targets"), StringArgumentType.getString(context, "name"))))))
         );
     }
@@ -48,12 +50,15 @@ public class CinematicCommand {
             source.sendError(Text.translatable("commands.cinematic.rec.failed.playernull"));
             return 0;
         }
+
         if (Cinematic.PLAYERS_RECORDING.containsKey(player.getUuid())) {
             source.sendError(Text.translatable("commands.cinematic.rec.failed.playerrecording"));
             return 0;
         }
-        player.sendMessage(Text.translatable("commands.cinematic.rec.infostop", Text.keybind(KeyInputHandler.keyStop.getTranslationKey())  ));
-        Cinematic cinematic = new Cinematic(name, (ServerWorld) player.getWorld(), player);
+
+        ServerPlayNetworking.send((ServerPlayerEntity) player, Packet.SEND_MESSAGE, PacketByteBufs.create());
+
+        Cinematic cinematic = new Cinematic(name, player.getWorld().getRegistryKey(), player);
         Cinematic.PLAYERS_RECORDING.put(player.getUuid(), cinematic);
         ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
         AtomicInteger startTime = new AtomicInteger();
@@ -63,7 +68,7 @@ public class CinematicCommand {
         ScheduledFuture<?> recCinematic = executorService.scheduleAtFixedRate(() -> {
             CinematicCommand.onRecording(cinematic, player , startTime.get());
             startTime.getAndIncrement();
-        }, 0, 5, TimeUnit.MILLISECONDS);
+        }, 0, 16, TimeUnit.MILLISECONDS);
 
         cinematic.setRecCinematic(recCinematic);
 
@@ -86,8 +91,11 @@ public class CinematicCommand {
         Collection<ServerPlayerEntity> availablePlayers = Cinematic.getAvailablePlayers(targets);
         Cinematic.addPlayers(availablePlayers);
 
+        AtomicInteger test = new AtomicInteger();
+
         ScheduledFuture<?> playExecutor = executorService.scheduleAtFixedRate(() -> {
             try {
+                test.getAndIncrement();
                 Location location = i.next();
                 for (ServerPlayerEntity player : availablePlayers) {
                     onPlaying(cinematic, player, location);
@@ -95,17 +103,17 @@ public class CinematicCommand {
             } catch (NoSuchElementException e) {
 
             }
-        }, 0, 5, TimeUnit.MILLISECONDS);
+        }, 0, 16, TimeUnit.MILLISECONDS);
 
         executorService.schedule(() -> {
             onStopped(cinematic, source, availablePlayers);
             playExecutor.cancel(false);
-        }, cinematic.getSeconds() * 1000L, TimeUnit.MILLISECONDS);
+        }, cinematic.getSeconds(), TimeUnit.SECONDS);
         return 1;
     }
 
     private static void onRecording(Cinematic cinematic, PlayerEntity player, int time) {
-        player.sendMessage(Text.literal("RECORDING " + time/200 ), true);
+        player.sendMessage(Text.literal("RECORDING " + Math.round( time/62.5)), true);
 
         double x = player.getX();
         double y = player.getY();
@@ -115,13 +123,14 @@ public class CinematicCommand {
         cinematic.addLocation(new Location(x, y, z, pitch, yaw));
     }
     public static void onSaved(Cinematic cinematic, PlayerEntity player) {
-        player.sendMessage(Text.literal("SAVING"));
+        CinematicUtil.saveCinematic(cinematic);
         Cinematic.CINEMATIC_LIST.put(cinematic.getName(), cinematic);
         Cinematic.PLAYERS_RECORDING.remove(player.getUuid());
+        player.sendMessage(Text.literal("SAVED"));
     }
 
     private static void onPlaying(Cinematic cinematic, ServerPlayerEntity player, Location location) {
-        player.teleport(cinematic.getWorld(), location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch());
+        PlayerUtil.teleport(player, player.getServer().getWorld(cinematic.getDimension()), location);
     }
 
     private static void onStopped(Cinematic cinematic, ServerCommandSource source, Collection<ServerPlayerEntity> targets) {
